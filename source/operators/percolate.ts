@@ -30,22 +30,25 @@ export function percolate<R>(
   }
 
   return new Observable((subscriber) => {
+    let errs: any[] = [];
     const subNext = (err: any) => {
-      if (remainder.length === 0) {
-        subscriber.error(err);
-      } else {
-        subscriber.add(percolate(...remainder).subscribe(subscriber));
+      errs.push(err);
+      if (errs.length < sources.length) {
+	return;
       }
+      subscriber.error(errs.pop());
     };
 
-    return from(first).subscribe({
-      complete: () => {
-        subscriber.complete();
-      },
-      next(value?: R) {
-        subscriber.next(value);
-      },
-      error: subNext,
-    });
+    for (let i = 0; i < sources.length; i++) {
+      from(sources[i]).subscribe({
+        complete: () => {
+          subscriber.complete();
+        },
+        next(value?: R) {
+          subscriber.next(value);
+        },
+        error: subNext,
+      });
+    }
   });
 }
